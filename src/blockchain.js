@@ -11,6 +11,11 @@ class BlockChain {
     }
 
     createNewBlock({ nonce, previousBlockHash, hash }) {
+
+        if (this.chain.length > 0 && this.pendingTransactions.length == 0) {
+            throw new Error("Cannot create a block with no transactions");
+        }
+
         const newBlock = new Block({
             index: this.chain.length + 1,
             nonce,

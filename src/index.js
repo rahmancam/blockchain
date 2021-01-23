@@ -1,5 +1,7 @@
-import Block from './block';
-import BlockChain from './blockchain';
+import app from './api';
 
-console.log(Block)
-console.log(BlockChain)
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+    console.log(`API server listening at: http://localhost:${PORT}`);
+})
