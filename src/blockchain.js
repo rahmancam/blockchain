@@ -1,10 +1,15 @@
 import Block from './block';
 import sha256 from 'sha256';
 
+const currentNodeUrl = `http://localhost:${process.argv[2]}`;
+
 class BlockChain {
     constructor() {
         this.chain = [];
         this.pendingTransactions = [];
+
+        this.currentNodeUrl = currentNodeUrl;
+        this.networkNodes = [];
 
         // Create a genesis block
         this.createNewBlock({ nonce: 100, previousBlockHash: '0x0', hash: '0x0' });
