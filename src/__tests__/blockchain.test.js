@@ -7,15 +7,18 @@ describe('Blockchain', () => {
         bitcoin = new BlockChain();
     })
 
-    test('Create Bitcoin blockchain', () => {
-        expect(bitcoin.chain.length).toEqual(0);
+    test('Genesis block', () => {
+        expect(bitcoin.chain.length).toEqual(1); // with genesis block
+        expect(bitcoin.chain[0].previousBlockHash).toEqual('0x0');
+        expect(bitcoin.chain[0].nonce).toEqual(100);
+        expect(bitcoin.chain[0].hash).toEqual('0x0');
     })
 
     test('Create new Block in bitcoin', () => {
         const newBlock = bitcoin.createNewBlock({ nonce: 9802, previousBlockHash: '0xd232DABY5', hash: '0xD4532CDY' })
-        expect(bitcoin.chain.length).toEqual(1);
-        expect(bitcoin.chain[0].timestamp).not.toBeNull();
-        expect(bitcoin.chain[0].previousBlockHash).toEqual(newBlock.previousBlockHash);
+        expect(bitcoin.chain.length).toEqual(2);
+        expect(bitcoin.chain[1].timestamp).not.toBeNull();
+        expect(bitcoin.chain[1].previousBlockHash).toEqual(newBlock.previousBlockHash);
 
     })
 
