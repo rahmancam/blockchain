@@ -124,8 +124,8 @@ app.post('/register-and-broadcast-node', async (req, res) => {
         bitCoin.networkNodes.push(newNodeUrl);
     }
 
-    const reqPromises = [];
-    bitCoin.networkNodes.filter(x => x && x !== bitCoin.currentNodeUrl).forEach(nodeUrl => {
+
+    const reqPromises = bitCoin.networkNodes.filter(x => x && x !== bitCoin.currentNodeUrl).map(nodeUrl => {
         // Register node end point
         const options = {
             uri: `${nodeUrl}/register-node`,
@@ -133,7 +133,7 @@ app.post('/register-and-broadcast-node', async (req, res) => {
             body: { newNodeUrl: newNodeUrl },
             json: true
         }
-        reqPromises.push(rp(options));
+        return rp(options);
     });
 
     await Promise.all(reqPromises)
@@ -173,6 +173,45 @@ app.post('/register-nodes-bulk', (req, res) => {
     res.json({ note: 'Nodes updated sucessfully!' });
 });
 
+app.get('/consensus', async (req, res) => {
+    const reqPromises = bitCoin.networkNodes.map(nodeUrl => {
+        const options = {
+            uri: `${nodeUrl}/blockchain`,
+            method: 'GET',
+            json: true
+        }
+        return rp(options);
+    });
+
+    const blockchains = await Promise.all(reqPromises);
+    const currentChainLength = bitCoin.chain.length;
+    let maxChainLength = currentChainLength;
+    let newLongestChain = null;
+    let newPendingTransactions = null;
+
+    blockchains.forEach(blockchain => {
+        if (blockchain.chain.length > maxChainLength) {
+            maxChainLength = blockchain.chain.length;
+            newLongestChain = blockchain.chain;
+            newPendingTransactions = blockchain.pendingTransactions;
+        }
+    });
+
+    if (!newLongestChain || (newLongestChain && !bitCoin.chainIsValid(newLongestChain))) {
+        res.json({
+            note: 'Current chain has not been replaced',
+            chain: bitCoin.chain
+        });
+    } else {
+        bitCoin.chain = newLongestChain;
+        bitcoin.pendingTransactions = newPendingTransactions;
+        res.json({
+            note: 'This chain has been replaced.',
+            chain: bitcoin.chain
+
+        });
+    }
+});
 
 
 app.use((err, req, res, next) => {

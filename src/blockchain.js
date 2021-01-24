@@ -76,6 +76,36 @@ class BlockChain {
         }
         return nonce;
     }
+
+    /**
+     * Check if block chain is valid
+     * @param {*} blockchain 
+     */
+    chainIsValid(blockchain) {
+        let validChain = true;
+
+        for (let blockIdx = 1; blockIdx < blockchain.length; blockIdx++) {
+            const currentBlock = blockchain[blockIdx];
+            const prevBlock = blockchain[blockIdx - 1];
+            const currentBlockData = {
+                transactions: currentBlock.transactions,
+                index: prevBlock.index
+            };
+            const blockHash = this.hashBlock({ previousBlockHash: prevBlock.hash, currentBlockData, nonce: currentBlock.nonce });
+            if (blockHash.substring(0, 4) !== '0000') validChain = false;
+            if (currentBlock.previousBlockHash !== prevBlock.hash) validChain = false;
+        }
+
+        const [genesisBlock] = blockchain;
+        const correctNonce = genesisBlock.nonce === 100;
+        const correctPrevBlockHash = genesisBlock.previousBlockHash === '0x0';
+        const correctHash = genesisBlock.hash === '0x0';
+        const correctTransactions = genesisBlock.transactions.length === 0;
+
+        if (!correctNonce || !correctPrevBlockHash || !correctHash || !correctTransactions) validChain = false;
+
+        return validChain;
+    }
 }
 
 export default BlockChain;

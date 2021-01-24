@@ -1,4 +1,5 @@
 import BlockChain from '../blockchain';
+import chain_sample from './chain-sample.json';
 
 describe('Blockchain', () => {
 
@@ -74,6 +75,11 @@ describe('Blockchain', () => {
         const proofNonce = bitcoin.proofOfWork({ previousBlockHash, currentBlockData: bitcoin.pendingTransactions });
         const hash = bitcoin.hashBlock({ nonce: proofNonce, previousBlockHash, currentBlockData: bitcoin.pendingTransactions })
         expect(hash.toString().substring(0, 4)).toEqual('0000');
+    })
+
+    test('Chain is Valid', () => {
+        const isValid = bitcoin.chainIsValid(chain_sample.chain);
+        expect(isValid).toEqual(true);
     })
 })
 
