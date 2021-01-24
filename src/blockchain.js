@@ -1,6 +1,7 @@
 import Block from './block';
 import sha256 from 'sha256';
 import { v4 as uuid } from 'uuid';
+import logger from './logger';
 
 const currentNodeUrl = `http://localhost:${process.argv[2]}`;
 
@@ -106,6 +107,51 @@ class BlockChain {
 
         return validChain;
     }
+
+    /**
+     * Get Block by hash
+     * @param {*} blockHash 
+     */
+    getBlock(blockHash) {
+        return this.chain.find(x => x.hash === blockHash);
+    }
+
+    /**
+     * Get Transaction
+     * @param {*} transactionId 
+     */
+    getTransaction(transactionId) {
+        let transaction = null;
+        let block = null;
+        this.chain.forEach(blk => {
+            const tx = blk.transactions.find(x => x.transactionId === transactionId);
+            if (tx) {
+                transaction = tx;
+                block = blk;
+            }
+        });
+        return { transaction, block };
+    }
+
+    getAddressData(address) {
+        let addressTransactions = [];
+        this.chain.forEach(blk => {
+            const transactions = blk.transactions.filter(x => x.sender === address || x.receiver === address);
+            addressTransactions = [...addressTransactions, ...transactions];
+        });
+
+        let balance = 0;
+        addressTransactions.forEach(tx => {
+            if (tx.receiver === address) balance += tx.amount;
+            else if (tx.sender === address) balance -= tx.amount;
+        });
+
+        return {
+            addressTransactions,
+            addressBalance: balance
+        }
+    }
+
 }
 
 export default BlockChain;

@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import rp from 'request-promise';
 import logger from './logger';
 import morgan from 'morgan';
+import path from 'path';
 
 const nodeAddress = uuid().replace('-', '');
 const bitCoin = new Blockchain();
@@ -13,6 +14,8 @@ const app = express();
 app.use(morgan('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 /**
  * Get entire blockchain
@@ -213,6 +216,27 @@ app.get('/consensus', async (req, res) => {
     }
 });
 
+app.get('/block/:blockHash', (req, res) => {
+    const { blockHash } = req.params;
+    const block = bitCoin.getBlock(blockHash);
+    res.json({
+        block
+    });
+});
+
+app.get('/transaction/:transactionId', (req, res) => {
+    const { transactionId } = req.params;
+    const transaction = bitCoin.getTransaction(transactionId);
+    res.json(transaction);
+});
+
+app.get('/address/:address', (req, res) => {
+    const { address } = req.params;
+    const addressData = bitCoin.getAddressData(address);
+    res.json({
+        addressData
+    });
+});
 
 app.use((err, req, res, next) => {
     logger.error(err);
