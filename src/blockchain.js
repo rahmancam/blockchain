@@ -1,5 +1,6 @@
 import Block from './block';
 import sha256 from 'sha256';
+import { v4 as uuid } from 'uuid';
 
 const currentNodeUrl = `http://localhost:${process.argv[2]}`;
 
@@ -17,7 +18,7 @@ class BlockChain {
 
     createNewBlock({ nonce, previousBlockHash, hash }) {
 
-        if (this.chain.length > 0 && this.pendingTransactions.length == 0) {
+        if (this.chain.length > 0 && this.pendingTransactions.length === 0) {
             throw new Error("Cannot create a block with no transactions");
         }
 
@@ -41,13 +42,19 @@ class BlockChain {
     }
 
     createNewTransaction({ amount, sender, receiver }) {
+        const TxId = uuid().replace(/-/g, '');
         const newTransaction = {
             amount,
             sender,
-            receiver
+            receiver,
+            transactionId: TxId
         };
-        this.pendingTransactions.push(newTransaction);
-        return this.chain.length + 1; // to which block the transaction going to belongs to
+        return newTransaction;
+    }
+
+    addTransactionToPendingTransactions({ transaction }) {
+        this.pendingTransactions.push(transaction);
+        return this.getLastBlock().index + 1;
     }
 
     hashBlock({ previousBlockHash, currentBlockData, nonce }) {

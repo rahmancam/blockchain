@@ -25,15 +25,37 @@ app.get('/blockchain', (req, res) => {
  * Create a new transaction
  */
 app.post('/transaction', (req, res) => {
-    const { amount, sender, receiver } = req.body;
-    const blockId = bitCoin.createNewTransaction({ amount, sender, receiver });
+    const transaction = req.body;
+    const blockId = bitCoin.addTransactionToPendingTransactions({ transaction });
     res.json({ note: `Transaction will be added in block: ${blockId}` });
+});
+
+/**
+ * Create and broadcast transaction
+ */
+app.post('/transaction/broadcast', async (req, res) => {
+    const { amount, sender, receiver } = req.body;
+    const transaction = bitCoin.createNewTransaction({ amount, sender, receiver });
+    bitCoin.addTransactionToPendingTransactions({ transaction });
+
+    const reqPromises = bitCoin.networkNodes.map(nodeUrl => {
+        const options = {
+            uri: nodeUrl + '/transaction',
+            method: 'POST',
+            body: transaction,
+            json: true
+        }
+        return rp(options);
+    });
+
+    await Promise.all(reqPromises)
+    res.json({ note: 'Transaction created and broadcasted successfully.' });
 });
 
 /**
  * Mine a block
  */
-app.get('/mine', (req, res) => {
+app.get('/mine', async (req, res) => {
     const { hash: previousBlockHash, index: lastBlockId } = bitCoin.getLastBlock();
     const currentBlockData = {
         transactions: bitCoin.pendingTransactions,
@@ -42,16 +64,60 @@ app.get('/mine', (req, res) => {
     const nonce = bitCoin.proofOfWork({ previousBlockHash, currentBlockData });
     const hash = bitCoin.hashBlock({ previousBlockHash, nonce, currentBlockData });
     const newBlock = bitCoin.createNewBlock({ previousBlockHash, nonce, hash });
+
+    const reqPromises = bitCoin.networkNodes.map(nodeUrl => {
+        const options = {
+            uri: nodeUrl + '/receive-new-block',
+            method: 'POST',
+            body: { newBlock: newBlock },
+            json: true
+        }
+        return rp(options);
+    });
+
+    await Promise.all(reqPromises)
     // reward miner
     // 00 - to track reward transaction
-    bitCoin.createNewTransaction({ amount: 12.5, sender: '00', receiver: nodeAddress });
-    res.json({ note: `New block mined successfully`, block: newBlock });
+    const options = {
+        uri: bitCoin.currentNodeUrl + '/transaction/broadcast',
+        method: 'POST',
+        body: {
+            amount: 12.5,
+            sender: '00',
+            receiver: nodeAddress
+        },
+        json: true
+    }
+    await rp(options);
+    res.json({ note: 'New block mined and broadcasted successfully.' });
+
 });
+
+app.post('/receive-new-block', (req, res) => {
+    const { newBlock } = req.body;
+    const lastBlock = bitCoin.getLastBlock();
+    const isValidBlockhash = (lastBlock.hash === newBlock.previousBlockHash);
+    const isValidBlockIndex = (lastBlock.index + 1 === newBlock.index);
+
+    if (isValidBlockhash && isValidBlockIndex) {
+        bitCoin.chain.push(newBlock);
+        bitCoin.pendingTransactions = [];
+        res.json({
+            note: 'New block received and accepted',
+            newBlock: newBlock
+        });
+    } else {
+        res.json({
+            note: 'New block rejected',
+            newBlock: newBlock
+        })
+    }
+})
 
 /**
  * Register a node and broadcase it to the network
  */
-app.post('/register-and-broadcast-node', (req, res) => {
+app.post('/register-and-broadcast-node', async (req, res) => {
     const { newNodeUrl } = req.body;
     logger.info(newNodeUrl);
     if (newNodeUrl && !bitCoin.networkNodes.includes(newNodeUrl)) {
@@ -70,19 +136,15 @@ app.post('/register-and-broadcast-node', (req, res) => {
         reqPromises.push(rp(options));
     });
 
-    Promise.all(reqPromises)
-        .then(data => {
-            const options = {
-                uri: `${newNodeUrl}/register-nodes-bulk`,
-                method: 'POST',
-                body: { allNetworkNodes: [...bitCoin.networkNodes, bitCoin.currentNodeUrl] },
-                json: true
-            };
-            return rp(options);
-        })
-        .then(() => {
-            res.json({ note: 'New node registered with network successfully!' });
-        });
+    await Promise.all(reqPromises)
+    const options = {
+        uri: `${newNodeUrl}/register-nodes-bulk`,
+        method: 'POST',
+        body: { allNetworkNodes: [...bitCoin.networkNodes, bitCoin.currentNodeUrl] },
+        json: true
+    };
+    await rp(options);
+    res.json({ note: 'New node registered with network successfully!' });
 });
 
 /**
